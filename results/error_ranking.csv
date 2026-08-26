@@ -1,0 +1,8 @@
+modo,direção,n,delta_count,excess_fn,share,detalhe
+FP — detecções sem anotação correspondente,sobrecontagem,10769,10769,0.0,0.5128583674635679,"inclui fruta real em árvore de fundo e no chão, que o MinneApple deliberadamente não anota"
+FN — sessão: 20150919_174151,subcontagem,5386,-5386,3036.9,0.25650061910658156,"83.2% de perda em 6,472 frutas — 2.29x a taxa média"
+FN — área (COCO): small (<32²),subcontagem,8731,-8731,1623.8,0.41580150490522905,"44.6% de perda em 19,581 frutas — 1.23x a taxa média"
+FN — iluminação: média,subcontagem,4581,-4581,1173.5,0.2181636346318697,"48.8% de perda em 9,388 frutas — 1.34x a taxa média"
+FN — aglomeração: cacho (6–10),subcontagem,3702,-3702,660.7,0.17630250500047623,"44.2% de perda em 8,379 frutas — 1.22x a taxa média"
+FN — borda: perto (50–150 px),subcontagem,3083,-3083,367.3,0.14682350700066674,"41.2% de perda em 7,482 frutas — 1.14x a taxa média"
+"FN — oclusão (solidez): ocluída (0,70–0,85)",subcontagem,2190,-2190,229.6,0.10429564720449566,"40.5% de perda em 5,401 frutas — 1.12x a taxa média"

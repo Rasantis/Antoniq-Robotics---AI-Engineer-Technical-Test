@@ -1,0 +1,70 @@
+# Configuração única do experimento. Alterar aqui, nunca no código.
+
+seed: 1337
+
+data:
+  # Largura x altura nativos. O MinneApple e RETRATO: 720 de largura por 1280 de altura.
+  # O artigo escreve "1280 x 720", que e altura x largura -- conferido nos 1001 arquivos.
+  image_size: [720, 1280]
+  class_names: ["apple"]
+  min_box_side: 2                # px; instâncias menores são artefato de máscara
+  n_folds: 3                     # GroupKFold sobre as sessões de captura
+
+train:
+  model: "yolo26n.pt"
+  imgsz: 640
+  # 120 epocas ~= 60 min por fold na RTX 3050 (medido: ~30 s/epoca com cache em RAM).
+  # Quatro treinos cabem numa noite. Com 364 imagens e patience 25, o early stopping
+  # costuma disparar antes do fim.
+  epochs: 120
+  batch: 16                      # cai para 8 se a RTX 3050 (6 GB) estourar
+  patience: 25
+  deterministic: true
+  # workers: 0 de proposito. Com subprocessos, o DataLoader do PyTorch no Windows aloca
+  # memoria compartilhada via file mapping e quebra com "error code 1455" (commit limit),
+  # observado nesta maquina no meio da primeira epoca.
+  workers: 0
+  # Com workers=0, decodificar PNG 720x1280 vira o gargalo. O cache em RAM decodifica uma
+  # unica vez: ~1,2 GiB para o split de treino de um fold, contra 6,3 GiB livres.
+  cache: "ram"
+
+# Os quatro braços de inferência comparados na Tarefa 2.
+# tile: null  -> imagem inteira; caso contrário, tamanho do crop em px.
+# Todo crop é alimentado à rede em `imgsz`, então o custo é proporcional ao nº de tiles
+# e a magnificação real é imgsz/tile.
+arms:
+  A_full640:   {tile: null, imgsz: 640,  overlap: 0.0}
+  B_full1280:  {tile: null, imgsz: 1280, overlap: 0.0}
+  C_tile640:   {tile: 640,  imgsz: 640,  overlap: 0.2}
+  D_tile320:   {tile: 320,  imgsz: 640,  overlap: 0.2}
+
+# Ablação do merge entre tiles (o núcleo dos 25% da Tarefa 2).
+merge:
+  default:
+    metric: "ios"                # "iou" | "ios"  (ios = interseção / área da menor caixa)
+    policy: "nmm"                # "nms" (suprime) | "nmm" (funde por união)
+    threshold: 0.5
+    drop_truncated: true         # descarta caixas coladas numa aresta INTERNA do tile
+    truncation_margin_px: 2
+  ablation:
+    metric: ["iou", "ios"]
+    policy: ["nms", "nmm"]
+    threshold: [0.3, 0.5, 0.7]
+    drop_truncated: [false, true]
+
+counting:
+  conf_sweep: [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90]
+  match_iou: 0.5                 # IoU para casar predição<->GT na análise de erro
+
+sequence:                        # bônus: dedup cross-frame
+  virtual_pass:
+    # Janela de altura cheia varrida na HORIZONTAL, que e a direcao real de deslocamento do
+    # robo (camera apontada de lado para a fileira, andando ao longo dela).
+    # Curso = 720 - 480 = 240 px; com passo 60 cabem exatamente 5 posicoes.
+    window: [480, 1280]
+    n_frames: 5
+    step_px: 60                  # deslocamento conhecido entre frames -> GT exato
+    axis: "x"
+  matcher:
+    method: "phase_correlate"    # "phase_correlate" | "orb_homography"
+    match_iou: 0.3

@@ -1,0 +1,71 @@
+# Dados, pesos e execuções ficam fora do repositório (ver configs/paths.yaml).
+# Mantidos em D:\ml\ para não sincronizar gigabytes pelo OneDrive.
+# ANCORADOS NA RAIZ, de proposito: sem a barra inicial, `data/` casa um diretorio em
+# QUALQUER nivel — inclusive src/data/, que some do repositorio sem aviso.
+/data/
+/datasets/
+/runs/
+# O dataset e as saidas de treino moram AQUI DENTRO agora (configs/paths.yaml aponta
+# para ml/). Sao 7,5 GB em 17 mil arquivos: entram na pasta para tudo ficar num lugar
+# so, nunca no repositorio.
+/ml/
+/weights/
+*.pt
+# Excecao: o checkpoint escolhido vai versionado, para que `run_inference.py` rode
+# num clone limpo sem precisar baixar o dataset e treinar antes.
+!models/*.pt
+*.onnx
+*.engine
+*.tar.gz
+*.zip
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+.pytest_cache/
+*.egg-info/
+
+# Saídas grandes de avaliação (os CSVs e figuras finais são versionados à mão)
+results/raw/
+results/**/*.npy
+report/*.aux
+report/*.log
+report/*.out
+
+# Intermediarios regeneraveis. Versionamos so o que e RESULTADO: as tabelas de sintese, as
+# figuras e o PDF. O que esta abaixo e grande e sai de novo rodando os scripts na ordem.
+#
+# ATENCAO: o git NAO aceita comentario no fim de uma linha de padrao. O '#' precisa abrir a
+# linha, senao ele vira parte do padrao e a regra silenciosamente nao casa com nada.
+
+# 30 MB de saida bruta do detector (03_eval_arms.py --infer)
+results/raw_detections/
+# 28k linhas cada, saem de 01_prepare_data.py e 04_error_modes.py
+results/instances.csv
+results/error_gt.csv
+results/error_fp.csv
+# intermediario; o PDF e o entregavel (08_report.py)
+report/relatorio.html
+# Imagens de exemplo do console: sao recortes do MinneApple, que e CC BY-NC-SA. Ficam no
+# disco para a apresentacao, mas nao redistribuidas aqui — o demo aceita qualquer imagem.
+demo/exemplos/
+# Roteiro pessoal de defesa. Nao e entregavel e nao faz sentido para quem revisa.
+GUIA-DE-DEFESA.md
+
+# saida do `02_train_cv.py --smoke`: 2 epocas, so para provar que o pipeline roda.
+# Nao e resultado, e o relatorio nao cita nada dele.
+results/training_smoke.json
+# saidas de demonstracao do run_inference.py; regeneraveis num comando
+results/inference/
+results/demo_inference.csv
+# 34 MB de auditoria visual em DPI 220; regeneravel com 10_visual_audit.py
+results/audit/
+results/audit_*/
+# galerias comparativas em DPI 220; regeneraveis com 10_visual_audit.py --models
+results/galeria_*/
+
+# rascunho da mensagem de commit; nao e entregavel
+COMMIT_MSG.txt

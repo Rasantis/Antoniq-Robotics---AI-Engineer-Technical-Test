@@ -1,0 +1,67 @@
+[
+  {
+    "experimento": "yolo26n_imgsz1280_90ep",
+    "descricao": "YOLO26n a 1280 px — testa se o gargalo e resolucao de entrada",
+    "modelo": "yolo26n.pt",
+    "imgsz": 1280,
+    "dataset": "full",
+    "epocas": 90,
+    "epocas_pedidas": 90,
+    "minutos": 27.6,
+    "val_mAP50_95": 0.4472461467417251,
+    "val_mAP50": 0.8611370408661254,
+    "weights": "D:\\ml\\runs\\experiments\\yolo26n_imgsz1280_90ep\\weights\\best.pt"
+  },
+  {
+    "experimento": "yolo26n_tiles320_15ep",
+    "descricao": "YOLO26n treinado em recortes de 320 px — slicing-aided fine-tuning",
+    "modelo": "yolo26n.pt",
+    "imgsz": 640,
+    "dataset": "tiles",
+    "epocas": 15,
+    "epocas_pedidas": 15,
+    "minutos": 9.3,
+    "val_mAP50_95": 0.47299386685388517,
+    "val_mAP50": 0.8629422928440365,
+    "weights": "D:\\ml\\runs\\experiments\\yolo26n_tiles320_15ep\\weights\\best.pt"
+  },
+  {
+    "experimento": "yolo11s_imgsz640_120ep",
+    "descricao": "YOLO11s a 640 px — capacidade (9,4 M contra 2,5 M parametros)",
+    "modelo": "yolo11s.pt",
+    "imgsz": 640,
+    "dataset": "full",
+    "epocas": 62,
+    "epocas_pedidas": 120,
+    "minutos": 21.2,
+    "val_mAP50_95": 0.42957251629626125,
+    "val_mAP50": 0.8513125104893513,
+    "weights": "D:\\ml\\runs\\experiments\\yolo11s_imgsz640_120ep\\weights\\best.pt"
+  },
+  {
+    "experimento": "yolo26s_imgsz1280_200ep",
+    "descricao": "YOLO26s a 1280 px — capacidade em ALTA resolucao (9,9 M contra 2,5 M)",
+    "modelo": "yolo26s.pt",
+    "imgsz": 1280,
+    "dataset": "full",
+    "epocas": 63,
+    "epocas_pedidas": 200,
+    "minutos": 360.6,
+    "val_mAP50_95": 0.47484886239992374,
+    "val_mAP50": 0.8827429465367997,
+    "weights": "D:\\ml\\runs\\experiments\\yolo26s_imgsz1280_200ep\\weights\\best.pt"
+  },
+  {
+    "experimento": "yolo26s_imgsz1280_200ep_aug",
+    "descricao": "YOLO26s a 1280 px COM a augmentacao anti-deriva — par controlado do m",
+    "modelo": "yolo26s.pt",
+    "imgsz": 1280,
+    "dataset": "full",
+    "epocas": 56,
+    "epocas_pedidas": 200,
+    "minutos": 144.6,
+    "val_mAP50_95": 0.47189819308229486,
+    "val_mAP50": 0.8729374749857656,
+    "weights": "D:\\ml\\runs\\experiments\\yolo26s_imgsz1280_200ep_aug\\weights\\best.pt"
+  }
+]

@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contagem de frutas — console de defesa</title>
+<style>
+/* Tokens vindos de src/viz/figures.py. O console e as figuras sao o mesmo sistema:
+   nada de paleta paralela que "quase" combina com os graficos projetados ao lado. */
+:root{
+  --papel:#fcfcfb; --tinta:#0b0b0b; --tinta-fraca:#52514e; --linha:#e4e3df;
+  --acerto:#008300; --falso:#e34948; --perdida:#eda100; --serie:#2a78d6;
+  --realce:#f4f3f0;
+  --display:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,sans-serif;
+  --corpo:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
+  /* Toda medida aparece em monoespacada. E a regra de tipo do console: se e numero medido,
+     ele se parece com saida de instrumento. */
+  --medida:"Cascadia Mono",Consolas,"DejaVu Sans Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--papel);color:var(--tinta);font-family:var(--corpo);
+  font-size:clamp(15px,1.15vw,19px);line-height:1.45;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+:focus-visible{outline:2.5px solid var(--serie);outline-offset:2px}
+
+/* ---------------------------------------------------------------- trilho de estacoes */
+.trilho{
+  display:flex;align-items:stretch;gap:0;border-bottom:1px solid var(--linha);
+  background:var(--papel);flex:0 0 auto;overflow-x:auto;scrollbar-width:none;
+}
+.trilho::-webkit-scrollbar{display:none}
+.chip{
+  appearance:none;border:0;background:none;cursor:pointer;white-space:nowrap;
+  font-family:var(--corpo);font-size:.72em;color:var(--tinta-fraca);
+  padding:.72em 1.05em;border-bottom:2.5px solid transparent;transition:color .12s;
+}
+.chip:hover{color:var(--tinta)}
+.chip[aria-current="true"]{color:var(--tinta);font-weight:640;border-bottom-color:var(--acerto)}
+.chip .tecla{
+  font-family:var(--medida);font-size:.86em;color:var(--tinta-fraca);
+  border:1px solid var(--linha);border-radius:3px;padding:0 .34em;margin-right:.5em;
+}
+.chip[aria-current="true"] .tecla{border-color:var(--acerto);color:var(--acerto)}
+
+/* ---------------------------------------------------------------------------- palco */
+.palco{flex:1 1 auto;position:relative;overflow:hidden}
+.estacao{
+  position:absolute;inset:0;padding:clamp(1.4rem,3.2vh,2.6rem) clamp(1.6rem,4vw,4rem) 0;
+  overflow-y:auto;display:none;flex-direction:column;
+}
+.estacao[data-ativa]{display:flex;animation:entra .22s ease-out}
+@keyframes entra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.estacao[data-ativa]{animation:none}}
+
+.olho{
+  font-family:var(--medida);font-size:.72em;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--tinta-fraca);margin-bottom:.5em;
+}
+h1{
+  font-family:var(--display);font-size:clamp(1.9rem,3.9vw,3.35rem);line-height:1.03;
+  letter-spacing:-.028em;font-weight:680;margin:0 0 .5em;max-width:22ch;
+}
+h1 em{font-style:normal;color:var(--acerto)}
+.lead{font-size:clamp(1rem,1.35vw,1.32rem);max-width:56ch;color:var(--tinta);margin:0 0 1.1em}
+.lead strong{font-weight:660}
+p{margin:0 0 .8em;max-width:62ch}
+.fraco{color:var(--tinta-fraca)}
+.n{font-family:var(--medida);font-variant-numeric:tabular-nums;font-weight:600}
+
+/* --------------------------------------------------------------------- placar grande */
+.placar{display:flex;flex-wrap:wrap;gap:clamp(1rem,2.6vw,2.8rem);margin:.2em 0 1.1em}
+.metrica{border-left:3px solid var(--linha);padding-left:.85em}
+.metrica.bom{border-left-color:var(--acerto)}
+.metrica.ruim{border-left-color:var(--falso)}
+.metrica.atencao{border-left-color:var(--perdida)}
+.metrica b{
+  display:block;font-family:var(--medida);font-variant-numeric:tabular-nums;
+  font-size:var(--tam,clamp(1.5rem,3.1vw,2.5rem));font-weight:700;line-height:1.05;
+  letter-spacing:-.02em;
+}
+.metrica span{display:block;font-size:.76em;color:var(--tinta-fraca);max-width:19ch;margin-top:.24em}
+
+/* ------------------------------------------------------------------------- conteudo */
+.duas{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);
+      gap:clamp(1.2rem,3vw,2.8rem);align-items:start;flex:1 1 auto;min-height:0}
+@media (max-width:900px){.duas{grid-template-columns:1fr}}
+.chapa{
+  border:1px solid var(--linha);background:var(--papel);padding:.5rem;border-radius:2px;
+  display:flex;align-items:center;justify-content:center;min-height:0;
+}
+.chapa img{max-width:100%;max-height:min(52vh,560px);display:block}
+figure{margin:0}
+figcaption{font-size:.76em;color:var(--tinta-fraca);margin-top:.5em;max-width:64ch}
+
+ul{margin:0 0 .8em;padding-left:1.1em;max-width:60ch}
+li{margin-bottom:.4em}
+li::marker{color:var(--tinta-fraca)}
+
+table{border-collapse:collapse;font-size:.86em;margin:0 0 .9em}
+th,td{padding:.36em .8em;text-align:right;border-bottom:1px solid var(--linha)}
+th:first-child,td:first-child{text-align:left}
+thead th{font-size:.82em;color:var(--tinta-fraca);font-weight:600;text-transform:none}
+td.medida{font-family:var(--medida);font-variant-numeric:tabular-nums}
+tr.destaque td{background:var(--realce);font-weight:640}
+
+/* ------------------------------------------------------------------ consulta rapida */
+.glossario{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+           gap:.9rem 1.5rem;align-items:start;margin-bottom:.9em}
+@media (max-width:1150px){.glossario{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.glossario h3{margin:0 0 .3em;font-family:var(--medida);font-size:.72em;font-weight:600;
+  color:var(--tinta-fraca);text-transform:uppercase;letter-spacing:.07em;
+  border-bottom:1px solid var(--linha);padding-bottom:.28em}
+table.verbete{font-size:.76em;margin:0;width:100%}
+table.verbete td{padding:.22em 0;vertical-align:top;text-align:left;border-bottom:0;
+  line-height:1.32}
+table.verbete td:first-child{white-space:nowrap;padding-right:.55em;
+  font-family:var(--medida);font-weight:600;color:var(--tinta)}
+table.verbete tr+tr td{border-top:1px solid var(--linha)}
+
+/* ------------------------------------------------------------------ trilha de prova */
+.prova{
+  flex:0 0 auto;border-top:1px solid var(--linha);padding:.6em clamp(1.6rem,4vw,4rem);
+  font-family:var(--medida);font-size:.7em;color:var(--tinta-fraca);
+  display:flex;gap:1.6em;flex-wrap:wrap;align-items:center;background:var(--papel);
+}
+.prova b{font-weight:600;color:var(--tinta);letter-spacing:.04em}
+
+/* -------------------------------------------------------------------------- o demo */
+.solta{
+  border:2px dashed var(--linha);border-radius:3px;padding:clamp(1.4rem,4vh,3rem);
+  text-align:center;cursor:pointer;transition:border-color .14s,background .14s;
+}
+.solta:hover,.solta.sobre{border-color:var(--acerto);background:var(--realce)}
+.solta p{margin:0 auto;max-width:44ch}
+.solta.compacta{padding:.55em 1em;text-align:left;font-size:.82em}
+.solta.compacta p{max-width:none;display:inline}
+.solta.compacta p+p{margin-left:1.2em}
+.solta.compacta .some{display:none}
+.barra{display:flex;gap:1.1em;align-items:center;flex-wrap:wrap;margin-bottom:1em}
+select,.botao{
+  font-family:var(--corpo);font-size:.86em;padding:.44em .8em;border:1px solid var(--linha);
+  background:var(--papel);color:var(--tinta);border-radius:3px;cursor:pointer;
+}
+.botao:hover{border-color:var(--tinta-fraca)}
+.grade{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.9rem;margin-top:.9em}
+@media (max-width:1100px){.grade{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.painel{border:1px solid var(--linha);border-radius:2px;overflow:hidden;display:flex;
+        flex-direction:column;background:var(--papel)}
+.painel img{width:100%;max-height:29vh;object-fit:contain;background:var(--realce);display:block}
+.painel .dados{padding:.6em .75em;font-size:.78em}
+.painel .dados div{display:flex;justify-content:space-between;gap:.6em;padding:.1em 0}
+.painel .dados .v{font-family:var(--medida);font-variant-numeric:tabular-nums;font-weight:600}
+.painel .dados .dup .v{color:var(--acerto)}
+.painel .dados .erro{border-bottom:1px solid var(--linha);margin-bottom:.3em;padding-bottom:.3em}
+.painel .dados .erro .v{font-weight:700}
+.verdade{border-left:3px solid var(--serie);background:rgba(42,120,214,.05);
+  padding:.55em .8em;margin-bottom:.7em;font-size:.84em}
+.verdade b{font-family:var(--medida);font-variant-numeric:tabular-nums}
+.verdade.sem{border-left-color:var(--perdida);background:rgba(237,161,0,.07)}
+.legenda{display:flex;flex-wrap:wrap;gap:.4em 1.4em;margin:-.3em 0 .7em;font-size:.78em;
+  color:var(--tinta-fraca);align-items:center}
+.legenda span{display:flex;align-items:center;gap:.42em}
+.legenda i{width:13px;height:13px;border:2px solid;border-radius:1px;flex:0 0 auto}
+.painel .dados .est .v{font-weight:700}
+/* A maca tem 27 px e o painel mostra a foto com ~140 px de largura: a caixa vira um ponto.
+   A lupa existe porque a cor so comunica se der para ve-la. */
+.painel img{cursor:zoom-in}
+.lupa{position:fixed;inset:0;z-index:60;background:rgba(11,11,11,.93);display:flex;
+  align-items:flex-start;justify-content:center;padding:1.5vh 1.5vw;cursor:zoom-out;
+  overflow:auto}
+/* Tamanho NATIVO, nao "cabe na tela": encolher para caber devolveria o problema que a lupa
+   veio resolver. Rola na vertical; so limita se a foto for mais larga que a janela. */
+.lupa img{max-width:100%;height:auto;image-rendering:crisp-edges}
+.painel h3{margin:0;padding:.5em .75em;font-size:.86em;font-family:var(--medida);
+           border-bottom:1px solid var(--linha);background:var(--realce)}
+.painel h3 .cod{float:right;font-size:.86em;font-weight:400;color:var(--tinta-fraca);
+  border:1px solid var(--linha);border-radius:2px;padding:0 .35em;background:var(--papel)}
+.painel .estrategia{padding:.35em .75em .1em;font-size:.74em;color:var(--tinta-fraca);
+  font-family:var(--corpo)}
+.pesos{font-family:var(--medida);font-size:.8em;color:var(--tinta-fraca);margin:-.2em 0 .7em}
+.pesos b{color:var(--tinta);font-weight:600}
+.aviso{color:var(--falso);font-size:.86em}
+.rodando{font-family:var(--medida);font-size:.86em;color:var(--tinta-fraca)}
+/* ------------------------------------------------------- o plano de producao (estacao 0) */
+.plano{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.5rem;align-items:start}
+.coluna{display:flex;flex-direction:column;gap:.55rem}
+@media (max-width:1100px){.plano{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cartao{border:1px solid var(--linha);border-radius:2px;padding:.75em .85em;background:var(--papel)}
+.cartao h3{margin:0 0 .5em;font-size:.95em;font-family:var(--medida);color:var(--tinta)}
+.cartao.portao{border-left:3px solid var(--serie);background:rgba(42,120,214,.045)}
+.cartao.portao h3{color:var(--serie)}
+.cartao p{font-size:.8em;margin:0 0 .55em;max-width:none;line-height:1.4}
+.nota{color:var(--tinta-fraca)}
+.nota b{color:var(--tinta)}
+.tag{font-family:var(--medida);font-size:.82em;padding:0 .38em;border-radius:2px;margin-right:.4em;
+     white-space:nowrap}
+.tag.med{background:rgba(0,131,0,.13);color:var(--acerto)}
+.tag.prop{background:rgba(237,161,0,.16);color:#8a6000}
+.tag.meta{background:rgba(42,120,214,.13);color:var(--serie)}
+table.mini{font-size:.8em;margin:0 0 .6em}
+table.mini td,table.mini th{padding:.24em .5em}
+.estacao code{font-family:var(--medida);font-size:.92em;background:var(--realce);padding:0 .25em}
+.escondido{display:none !important}
+</style>
+</head>
+<body>
+
+<nav class="trilho" id="trilho" aria-label="Estações"></nav>
+
+<div class="palco" id="palco">
+
+  <!-- 1 ................................................................... a tese -->
+  <section class="estacao" data-id="1" data-nome="Tese" data-prova="report/relatorio.md · §3, §4">
+    <div class="olho">Antoniq Robotics · AI Engineer (Computer Vision)</div>
+    <h1>O que quebra a contagem não é o detector.<br>É a <em>duplicata</em> e o <em>viés</em>.</h1>
+    <p class="lead">Um falso positivo e um falso negativo na mesma imagem <strong>se cancelam</strong>
+    e o erro de contagem some. Uma duplicata que sobra em cada tile <strong>se acumula</strong>
+    fileira afora. As duas coisas somem numa média — e é por isso que este trabalho não é
+    organizado em torno de mAP.</p>
+
+    <svg viewBox="0 0 640 138" width="100%" style="max-width:660px;margin-top:.4em" role="img"
+         aria-label="Diagrama: falso positivo e falso negativo se cancelam; duplicata acumula">
+      <text x="0" y="14" font-size="11" font-family="Consolas,monospace" fill="#52514e">SE CANCELA — soma zero, parece perfeito</text>
+      <rect x="2" y="26" width="34" height="34" fill="none" stroke="#e34948" stroke-width="2.5"/>
+      <text x="44" y="48" font-size="13" fill="#0b0b0b">+1 falso positivo</text>
+      <rect x="188" y="26" width="34" height="34" fill="none" stroke="#eda100" stroke-width="2.5"/>
+      <text x="230" y="48" font-size="13" fill="#0b0b0b">−1 perdida</text>
+      <text x="356" y="48" font-size="13" font-family="Consolas,monospace" fill="#0b0b0b">= erro 0</text>
+      <text x="440" y="48" font-size="12" fill="#52514e">… e 2 erros reais escondidos</text>
+
+      <text x="0" y="90" font-size="11" font-family="Consolas,monospace" fill="#52514e">ACUMULA — mesma fruta, tiles vizinhos</text>
+      <rect x="2" y="102" width="34" height="30" fill="none" stroke="#008300" stroke-width="2.5"/>
+      <rect x="26" y="102" width="34" height="30" fill="none" stroke="#008300" stroke-width="2.5"/>
+      <text x="72" y="123" font-size="13" fill="#0b0b0b">1 maçã, 2 caixas</text>
+      <text x="212" y="123" font-size="13" font-family="Consolas,monospace" fill="#0b0b0b">× 15 tiles × N imagens</text>
+      <text x="416" y="123" font-size="13" fill="#e34948">= erro sistemático</text>
+    </svg>
+  </section>
+
+  <!-- 2 ................................................................. o dataset -->
+  <section class="estacao" data-id="2" data-nome="Dataset" data-prova="results/dataset_summary.json · scripts/01_prepare_data.py">
+    <div class="olho">§1 · o que o dado obriga</div>
+    <h1>670 imagens que <em>não são independentes</em></h1>
+    <p class="lead">MinneApple. A primeira coisa que olhei não foi o modelo: foi de onde as
+    imagens vêm. São quadros de <strong>dez vídeos</strong>, um a cada cinco, gravados
+    caminhando a ~1&nbsp;m/s ao longo de fileiras — cerca de <strong>17&nbsp;cm</strong> entre
+    imagens vizinhas.</p>
+    <div class="placar">
+      <div class="metrica"><b>28.182</b><span>instâncias anotadas</span></div>
+      <div class="metrica"><b>~27 px</b><span>lado mediano da caixa</span></div>
+      <div class="metrica atencao"><b>69,5%</b><span>na faixa <i>small</i> do COCO</span></div>
+      <div class="metrica atencao"><b>0%</b><span><i>large</i> — AP_large é indefinido</span></div>
+    </div>
+    <p class="fraco">O nome do arquivo entrega a sessão de captura:
+    <span class="n">20150921_131453</span>_image<span class="n">1101</span>.png — e é isso que
+    torna possível tanto o split honesto quanto o bônus de deduplicação entre quadros.</p>
+  </section>
+
+  <!-- 3 ................................................................... o split -->
+  <section class="estacao" data-id="3" data-nome="Split" data-prova="results/leakage.csv · scripts/07_leakage.py">
+    <div class="olho">§2 · o resultado mais importante</div>
+    <h1>Um split aleatório reportaria o <em>dobro</em></h1>
+    <div class="duas">
+      <div>
+        <p class="lead">Quadros vizinhos mostram as mesmas maçãs. No split aleatório,
+        <strong>10 das 10 sessões</strong> aparecem em treino <em>e</em> teste do mesmo fold.
+        Não é vazamento parcial que dê para descontar.</p>
+        <div class="placar">
+          <div class="metrica ruim"><b>0,812</b><span>AP50 com split aleatório</span></div>
+          <div class="metrica bom"><b>0,548</b><span>AP50 com split por sessão</span></div>
+          <div class="metrica ruim"><b>+75,5%</b><span>inflação em AP-small — a faixa que é 70% do dataset</span></div>
+        </div>
+        <p class="fraco">O modelo vazado ainda tem <span class="n">+20,0%</span> de viés: pelo meu
+        critério ele reprovaria antes de qualquer discussão de MAE.</p>
+      </div>
+      <figure>
+        <div class="chapa"><img src="/fig/02_splits.png" alt="Composição dos folds por sessão"></div>
+        <figcaption>Cada sessão aparece em exatamente um papel por fold. É a evidência visual de
+        que nenhuma cruza treino, validação e teste.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 4 .................................................................. os braços -->
+  <section class="estacao" data-id="4" data-nome="Braços" data-prova="results/arms.csv · scripts/03_eval_arms.py">
+    <div class="olho">§4 · quatro estratégias, os mesmos pesos</div>
+    <h1>O tiling perdeu — e o motivo é <em>identificável</em></h1>
+    <div class="duas">
+      <div>
+        <table>
+          <thead><tr><th>Braço</th><th>passes</th><th>AP50</th><th>MAE</th><th>latência</th></tr></thead>
+          <tbody>
+            <tr class="destaque"><td>A · imagem 640 ✔</td><td class="medida">1</td><td class="medida">0,621</td><td class="medida">21,4</td><td class="medida">16 ms</td></tr>
+            <tr><td>B · imagem 1280</td><td class="medida">1</td><td class="medida">0,537</td><td class="medida">31,1</td><td class="medida">23 ms</td></tr>
+            <tr><td>C · tile 640</td><td class="medida">6</td><td class="medida">0,463</td><td class="medida">29,7</td><td class="medida">57 ms</td></tr>
+            <tr><td>D · tile 320</td><td class="medida">15</td><td class="medida">0,135</td><td class="medida">49,0</td><td class="medida">130 ms</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Recortar em 640 e alimentar a rede em 640 não aumenta o objeto.</strong> Só
+        reduz a densidade por passe. A magnificação real só aparece no tile de 320 — e aí a maçã
+        chega a <span class="n">4,0×</span> a escala que o modelo viu no treino.</p>
+        <p class="fraco">Se o D perde, é da receita de treino, não da estratégia de inferência.
+        O controle honesto seria treinar em recortes — rodei, é o treino em recortes da §6.</p>
+      </div>
+      <figure>
+        <div class="chapa"><img src="/fig/03_bracos.png" alt="Comparação dos quatro braços"></div>
+        <figcaption>Acurácia contra custo. O mais simples e mais barato vence em todas as colunas.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 5 ................................................................... a fusão -->
+  <section class="estacao" data-id="5" data-nome="Fusão" data-prova="results/merge_paired.csv · src/eval/ablation.py · src/tiling/merge.py">
+    <div class="olho">§4 · o ponto técnico</div>
+    <h1 style="max-width:none;font-size:clamp(1.6rem,3vw,2.5rem);margin-bottom:.4em">IoU não serve para fundir <em>entre tiles</em></h1>
+    <p class="lead" style="margin-bottom:.7em">Depois do tiling sobra uma pilha de caixas, e
+    algumas são a mesma maçã duas vezes. Para decidir, o computador mede <strong>o quanto duas
+    caixas se sobrepõem</strong> — e existem duas formas de medir isso.</p>
+
+    <div class="duas" style="grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)">
+      <svg viewBox="0 0 660 340" style="width:100%;max-height:52vh" role="img"
+           aria-label="Na aresta do tile, um tile vê a maçã inteira e o vizinho vê metade. IoU dá 0,50, em cima do corte; IoS dá 1,00.">
+        <text x="0" y="13" font-size="12" font-family="Consolas,monospace" fill="#52514e">NA ARESTA DO TILE, É SEMPRE ESTA SITUAÇÃO</text>
+
+        <!-- tile A: maca inteira -->
+        <rect x="6" y="34" width="150" height="112" fill="none" stroke="#2a78d6" stroke-width="3"/>
+        <text x="81" y="96" font-size="30" text-anchor="middle">🍎</text>
+        <text x="81" y="166" font-size="13" text-anchor="middle" fill="#0b0b0b">tile A vê inteira</text>
+        <text x="81" y="185" font-size="14" font-family="Consolas,monospace" fill="#0b0b0b">900 px²</text>
+
+        <!-- tile B: metade. A maca e desenhada INTEIRA e recortada pela borda do tile, que e
+             exatamente o que acontece: o tile nao ve meia fruta, ele ve a fruta cortada. -->
+        <defs><clipPath id="corteB"><rect x="248" y="34" width="75" height="112"/></clipPath></defs>
+        <rect x="248" y="34" width="75" height="112" fill="#eda100" fill-opacity=".28" stroke="#eda100" stroke-width="3"/>
+        <text x="323" y="96" font-size="30" text-anchor="middle" clip-path="url(#corteB)">🍎</text>
+        <text x="285" y="166" font-size="13" text-anchor="middle" fill="#0b0b0b">tile B vê metade</text>
+        <text x="285" y="185" font-size="14" font-family="Consolas,monospace" fill="#0b0b0b">450 px²</text>
+
+        <!-- em comum -->
+        <defs><clipPath id="corteC"><rect x="437" y="34" width="75" height="112"/></clipPath></defs>
+        <rect x="437" y="34" width="75" height="112" fill="#eda100" fill-opacity=".28" stroke="#eda100" stroke-width="3" stroke-dasharray="5 4"/>
+        <text x="512" y="96" font-size="30" text-anchor="middle" clip-path="url(#corteC)">🍎</text>
+        <text x="474" y="166" font-size="13" text-anchor="middle" fill="#0b0b0b">em comum</text>
+        <text x="474" y="185" font-size="14" font-family="Consolas,monospace" fill="#0b0b0b">450 px²</text>
+
+        <!-- as duas contas -->
+        <text x="0" y="228" font-size="13" fill="#0b0b0b"><tspan font-weight="700" fill="#e34948">IoU</tspan> = comum ÷ área TOTAL coberta</text>
+        <text x="330" y="228" font-size="15" font-family="Consolas,monospace" fill="#0b0b0b">450 ÷ 900 =</text>
+        <text x="500" y="228" font-size="17" font-family="Consolas,monospace" font-weight="700" fill="#e34948">0,50</text>
+
+        <text x="0" y="258" font-size="13" fill="#0b0b0b"><tspan font-weight="700" fill="#008300">IoS</tspan> = comum ÷ área da MENOR</text>
+        <text x="330" y="258" font-size="15" font-family="Consolas,monospace" fill="#0b0b0b">450 ÷ 450 =</text>
+        <text x="500" y="258" font-size="17" font-family="Consolas,monospace" font-weight="700" fill="#008300">1,00</text>
+
+        <!-- a regua: onde cada um cai em relacao ao corte -->
+        <line x1="30" y1="308" x2="630" y2="308" stroke="#52514e" stroke-width="1.5"/>
+        <text x="6" y="312" font-size="12" font-family="Consolas,monospace" fill="#52514e">0</text>
+        <text x="638" y="312" font-size="12" font-family="Consolas,monospace" fill="#52514e">1</text>
+        <line x1="330" y1="294" x2="330" y2="322" stroke="#52514e" stroke-width="2" stroke-dasharray="4 3"/>
+        <text x="330" y="337" font-size="12" text-anchor="middle" fill="#52514e">corte 0,5</text>
+        <circle cx="330" cy="308" r="7" fill="#e34948"/>
+        <text x="316" y="288" font-size="12" text-anchor="end" fill="#e34948">IoU cai bem em cima</text>
+        <circle cx="630" cy="308" r="7" fill="#008300"/>
+        <text x="616" y="288" font-size="12" text-anchor="end" fill="#008300">IoS, longe de qualquer dúvida</text>
+      </svg>
+
+      <div>
+        <p style="margin-bottom:.7em"><strong>É por isso que o IoU não serve aqui.</strong> Ele
+        foi feito para comparar caixas de tamanho parecido. Meia maçã contra uma maçã inteira não
+        são — e o valor cai <em>exatamente</em> no corte. Um pixel para cá ou para lá muda a
+        decisão: às vezes apaga a duplicata, às vezes não. <strong>É moeda ao ar.</strong></p>
+
+        <div class="placar" style="margin:.2em 0 .6em">
+          <div class="metrica bom"><b>77%</b><span>o IoS erra menos falso positivo</span></div>
+          <div class="metrica ruim"><b>0%</b><span>nunca acha mais fruta — ele só apaga</span></div>
+          <div class="metrica atencao"><b>37%</b><span>e na contagem ele perde na maioria</span></div>
+        </div>
+        <p class="fraco" style="font-size:.88em">Sobre <span class="n">3.240</span> pares: a mesma
+        configuração rodada duas vezes, trocando só a métrica de casamento. O IoS faz o que
+        promete — <strong>e ainda assim a contagem não melhora</strong>, porque o modelo já
+        subconta e apagar mais empurra o número para o lado errado.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 ............................................................ modos de erro -->
+  <section class="estacao" data-id="6" data-nome="Erros" data-prova="results/error_balance.json · results/error_ranking.csv · src/eval/error_modes.py">
+    <div class="olho">§5 · uma foto explica o dataset inteiro</div>
+    <h1 style="max-width:none;font-size:clamp(1.5rem,2.8vw,2.3rem);margin-bottom:.35em">86 maçãs. Ele contou <em>87</em>. E errou <em>85 vezes</em>.</h1>
+
+    <div class="duas" style="grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)">
+      <figure>
+        <div class="chapa" style="padding:.3rem"><img style="max-height:min(60vh,660px)" src="/fig/10_cancelamento.jpg"
+             alt="À esquerda, as 86 maçãs marcadas por um humano. À direita, o que o modelo detectou, com acertos em verde, invenções em vermelho e perdidas em laranja."></div>
+        <figcaption style="display:flex;gap:1.3em;flex-wrap:wrap;margin-top:.55em">
+          <span><b style="color:#2a78d6">▬</b> o que existe</span>
+          <span><b style="color:#008300">▬</b> acertou</span>
+          <span><b style="color:#e34948">▬</b> inventou</span>
+          <span><b style="color:#eda100">▬</b> perdeu</span>
+        </figcaption>
+      </figure>
+
+      <div>
+        <p style="margin-bottom:.6em">Repare <strong>onde</strong> estão as vermelhas: fruta no
+        chão e em árvore de fundo. <strong>Aquelas maçãs são reais</strong> — o MinneApple
+        decidiu não anotá-las. O modelo viu certo e levou falta.</p>
+
+        <table style="margin-bottom:.7em">
+          <tbody>
+            <tr><td>acertou</td><td class="medida" style="color:#008300">44</td></tr>
+            <tr><td>inventou</td><td class="medida" style="color:#e34948">43</td></tr>
+            <tr><td>perdeu</td><td class="medida" style="color:#eda100">42</td></tr>
+            <tr class="destaque"><td>erro no <strong>placar</strong></td><td class="medida">87 − 86 = 1</td></tr>
+            <tr class="destaque"><td>erros <strong>de verdade</strong></td><td class="medida">43 + 42 = 85</td></tr>
+          </tbody>
+        </table>
+
+        <p style="margin-bottom:.5em"><strong>As 43 invenções taparam as 42 perdas.</strong>
+        Sobrou 1 no placar.</p>
+
+        <p class="fraco" style="font-size:.9em">No dataset inteiro é a mesma conta:
+        <span class="n">10.229</span> perdidas contra <span class="n">10.769</span> inventadas —
+        o placar mostra <span class="n">+540</span>, e o modelo errou <span class="n">20.998</span>
+        vezes. <strong>Trinta e nove vezes mais do que o placar diz.</strong> É por isso que meu
+        critério de aceitação não usa só o erro de contagem: sem o F1, este modelo passaria
+        como "erra 1%".</p>
+
+        <p class="fraco" style="font-size:.9em;border-top:1px solid var(--linha);padding-top:.55em;margin-top:.55em">
+        <strong>E onde ele mais perde?</strong> Fruta pequena leva o maior volume — 44,6% de
+        19.581. Mas a pior é uma <strong>sessão de captura só</strong>: perde <strong>83,2%</strong>
+        de 6.472 frutas, <span class="n">2,29×</span> a taxa média. A barra maior não é o pior
+        problema.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 .............................................................. calibração -->
+  <section class="estacao" data-id="7" data-nome="Calibração" data-prova="results/calibration_optima.json · results/conf_sweep.csv">
+    <div class="olho">§5 · o ponto de operação</div>
+    <h1 style="max-width:none;font-size:clamp(1.5rem,2.8vw,2.3rem);margin-bottom:.4em">Detectar bem e <em>contar bem</em> pedem ajustes diferentes</h1>
+
+    <div class="duas" style="grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)">
+      <div>
+        <p class="lead" style="margin-bottom:.7em">O modelo dá uma nota de confiança para cada
+        caixa, e eu escolho um corte: abaixo dele, descarto. <strong>Esse corte é um dial.</strong>
+        Corte baixo, ele inventa mais e perde menos; corte alto, o contrário.</p>
+
+        <table style="margin-bottom:.7em">
+          <thead><tr><th>onde eu ponho o dial</th><th>MAE</th><th>F1</th><th>viés</th></tr></thead>
+          <tbody>
+            <tr><td>para o melhor <strong>F1</strong></td><td class="medida">12,2</td>
+                <td class="medida" style="color:#008300">0,750</td>
+                <td class="medida" style="color:#e34948">−17,0%</td></tr>
+            <tr class="destaque"><td>para a melhor <strong>contagem</strong></td>
+                <td class="medida" style="color:#008300">9,0</td>
+                <td class="medida">0,734</td>
+                <td class="medida" style="color:#008300">+0,8%</td></tr>
+          </tbody>
+        </table>
+
+        <p style="margin-bottom:.6em"><strong>São dois lugares diferentes: 0,22 e 0,13.</strong>
+        Se eu calibro pelo F1 e reporto contagem, estou descrevendo um sistema que subconta
+        <strong>17%</strong> — e que nunca foi configurado do jeito que eu contei.</p>
+
+        <p class="fraco" style="font-size:.9em">É a estação 6 outra vez: no corte baixo as
+        invenções e as perdas se cancelam, e a contagem fica boa. No corte alto sobram menos
+        erros no total — F1 melhor — mas aí ele só perde, e o viés dispara.</p>
+      </div>
+
+      <figure>
+        <div class="chapa"><img src="/fig/05_calibracao.png" alt="Curvas de calibração ao longo do limiar"></div>
+        <figcaption><strong>Separação entre escolher e medir:</strong> braço, limiar e política
+        saem da <em>validação</em>, por fold. O teste do fold <i>k</i> só é lido depois, no ponto
+        que a validação daquele fold congelou — senão o número reportado seria um mínimo sobre
+        milhares de combinações calculado no próprio conjunto de avaliação.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 8 ............................................................... a correção -->
+  <section class="estacao" data-id="8" data-nome="Correção" data-prova="results/dataset_summary.json · results/model_comparison.csv">
+    <div class="olho">§6 · a análise de erro apontou um alvo</div>
+    <h1 style="max-width:none;font-size:clamp(1.5rem,2.8vw,2.3rem);margin-bottom:.35em">Mesmo modelo. Só a <em>augmentação</em> muda.</h1>
+
+    <div class="duas" style="grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)">
+      <figure>
+        <div class="chapa" style="padding:.3rem"><img style="max-height:min(46vh,470px)"
+             src="/fig/11_augmentacao.jpg"
+             alt="A mesma foto da sessão clara: as 65 maçãs anotadas, o modelo sem a augmentação achando 17, e com ela achando 28."></div>
+        <figcaption style="display:flex;gap:1.3em;flex-wrap:wrap;margin-top:.5em">
+          <span><b style="color:#2a78d6">▬</b> o que existe</span>
+          <span><b style="color:#008300">▬</b> acertou</span>
+          <span><b style="color:#e34948">▬</b> inventou</span>
+          <span><b style="color:#eda100">▬</b> perdeu</span>
+        </figcaption>
+
+        <svg viewBox="0 0 790 118" style="width:100%;margin-top:.7em" role="img"
+             aria-label="O brilho dentro das caixas: o treino vive em 98, as sessões que falham em 164. Com hsv_v 0,40 a augmentação alcança 137; com 0,75 alcança 172.">
+          <text x="0" y="11" font-size="11" font-family="Consolas,monospace" fill="#52514e">BRILHO MÉDIO DENTRO DAS CAIXAS (V do HSV)</text>
+          <line x1="20" y1="62" x2="672" y2="62" stroke="#52514e" stroke-width="1.4"/>
+          <text x="20" y="80" font-size="10.5" text-anchor="middle" font-family="Consolas,monospace" fill="#52514e">50</text>
+          <text x="672" y="80" font-size="10.5" text-anchor="middle" font-family="Consolas,monospace" fill="#52514e">200</text>
+
+          <!-- onde o treino vive -->
+          <rect x="37" y="52" width="307" height="20" fill="#2a78d6" fill-opacity=".2"/>
+          <circle cx="229" cy="62" r="6" fill="#2a78d6"/>
+          <text x="229" y="45" font-size="11" text-anchor="middle" fill="#2a78d6">treino, média 98</text>
+
+          <!-- onde ele falha -->
+          <circle cx="516" cy="62" r="6" fill="#e34948"/>
+          <text x="516" y="45" font-size="11" text-anchor="middle" fill="#e34948">as sessões que falham: 164–166</text>
+
+          <!-- ate onde cada augmentacao alcanca -->
+          <line x1="229" y1="92" x2="398" y2="92" stroke="#eda100" stroke-width="3"/>
+          <path d="M398 88 l0 8 l7 -4 z" fill="#eda100"/>
+          <text x="410" y="96" font-size="11" fill="#0b0b0b"><tspan font-family="Consolas,monospace">hsv_v 0,40</tspan> chega a 137 — não alcança</text>
+
+          <line x1="229" y1="110" x2="550" y2="110" stroke="#008300" stroke-width="3"/>
+          <path d="M550 106 l0 8 l7 -4 z" fill="#008300"/>
+          <text x="562" y="114" font-size="11" fill="#0b0b0b"><tspan font-family="Consolas,monospace">hsv_v 0,75</tspan> chega a 172 — <tspan fill="#008300" font-weight="700">alcança</tspan></text>
+        </svg>
+
+      </figure>
+
+      <div>
+        <p style="margin-bottom:.7em">A §5 disse onde o modelo falha: nas duas sessões mais
+        claras. Fui medir o <strong>brilho dentro das caixas anotadas</strong> e o treino vive em
+        <span class="n">98</span>, enquanto essas sessões estão em <span class="n">164</span>.
+        <strong>O treino nunca mostrou aquela luz ao modelo.</strong></p>
+
+        <div class="placar" style="margin:.2em 0 .7em;--tam:1.45rem">
+          <div class="metrica bom"><b>15,1 → 12,6</b><span>MAE, −16,2%</span></div>
+          <div class="metrica bom"><b>+7,8%</b><span>recall</span></div>
+          <div class="metrica bom"><b>−28,4% → −18,3%</b><span>viés</span></div>
+        </div>
+
+        <p style="margin-bottom:.6em"><strong>Isso comprou mais que quadruplicar os
+        parâmetros.</strong> Os dois modelos têm a mesma arquitetura, a mesma resolução, o mesmo
+        orçamento de épocas e a mesma semente.</p>
+
+        <p class="fraco" style="font-size:.9em">Ressalva que eu mesmo declaro: as quatro
+        mudanças da receita entraram juntas — brilho, saturação, escala e mosaico. Então o ganho
+        é <em>da receita</em>, não isoladamente do brilho. Separar exigiria uma varredura de um
+        fator por vez, que não coube.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 ................................................................. go/no-go -->
+  <section class="estacao" data-id="9" data-nome="Go/no-go" data-prova="results/per_image.csv · src/eval/counting.py">
+    <div class="olho">§5 · o veredito</div>
+    <h1 style="max-width:none;font-size:clamp(1.5rem,2.8vw,2.3rem);margin-bottom:.35em">O agregado passa. <em>Oito das dez sessões</em> reprovam.</h1>
+    <p class="lead" style="margin-bottom:.5em">O total fecha. Por dentro, cada dia de filmagem
+    conta uma história diferente — e <strong>os erros de dias opostos se anulam no total</strong>.</p>
+
+    <svg viewBox="0 0 1100 200" style="width:100%" role="img"
+         aria-label="Numa sessão existiam 98 maçãs por foto e ele contou 14. Noutra existiam 22 e ele contou 58. Somando tudo, 28.182 contra 27.614.">
+      <text x="230" y="12" font-size="11" font-family="Consolas,monospace" fill="#52514e">MAÇÃS POR FOTO</text>
+      <rect x="230" y="20" width="12" height="12" fill="#2a78d6"/>
+      <text x="248" y="30" font-size="11.5" fill="#52514e">o que existe</text>
+      <rect x="348" y="20" width="12" height="12" fill="#e34948"/>
+      <text x="366" y="30" font-size="11.5" fill="#52514e">o que ele contou</text>
+
+      <text x="0" y="58" font-size="13.5" font-weight="700" fill="#0b0b0b">um dia de filmagem</text>
+      <text x="0" y="76" font-size="12" fill="#52514e">sessão de 19/09</text>
+      <rect x="230" y="46" width="755" height="18" fill="#2a78d6"/>
+      <text x="994" y="60" font-size="13.5" font-family="Consolas,monospace" fill="#0b0b0b">98</text>
+      <rect x="230" y="68" width="109" height="18" fill="#e34948"/>
+      <text x="348" y="82" font-size="13.5" font-family="Consolas,monospace" fill="#0b0b0b">14</text>
+      <text x="381" y="82" font-size="12" fill="#e34948">viu 1 de cada 7</text>
+
+      <text x="0" y="122" font-size="13.5" font-weight="700" fill="#0b0b0b">outro dia</text>
+      <text x="0" y="140" font-size="12" fill="#52514e">sessão de 21/09</text>
+      <rect x="230" y="110" width="169" height="18" fill="#2a78d6"/>
+      <text x="408" y="124" font-size="13.5" font-family="Consolas,monospace" fill="#0b0b0b">22</text>
+      <rect x="230" y="132" width="449" height="18" fill="#e34948"/>
+      <text x="688" y="146" font-size="13.5" font-family="Consolas,monospace" fill="#0b0b0b">58</text>
+      <text x="721" y="146" font-size="12" fill="#e34948">contou quase o triplo</text>
+
+      <line x1="0" y1="166" x2="1100" y2="166" stroke="#e4e3df" stroke-width="1"/>
+      <text x="0" y="187" font-size="13.5" fill="#0b0b0b"><tspan font-weight="700">Somando as 670 fotos:</tspan>
+        <tspan font-family="Consolas,monospace"> 28.182</tspan> existem, <tspan font-family="Consolas,monospace">27.614</tspan> contadas —
+        <tspan font-weight="700" fill="#008300">erro de 2%, parece ótimo.</tspan></text>
+    </svg>
+
+    <div class="duas" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-top:.5em">
+      <table>
+        <thead><tr><th>Trava</th><th>Limite</th><th>Medido</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>viés agregado</td><td class="medida">≤ 3%</td><td class="medida">−2,0%</td>
+              <td style="color:#008300;text-align:right;font-weight:700">passa</td></tr>
+          <tr><td>erro médio por sessão</td><td class="medida">≤ 10%</td><td class="medida">54,3%</td>
+              <td style="color:#e34948;text-align:right;font-weight:700">reprova</td></tr>
+          <tr class="destaque"><td>pior sessão</td><td class="medida">≤ 15%</td><td class="medida">166%</td>
+              <td style="color:#e34948;text-align:right;font-weight:700">reprova</td></tr>
+        </tbody>
+      </table>
+
+      <div>
+        <p style="margin-bottom:.6em"><strong>É por isso que o critério tem três travas e não
+        uma.</strong> Um sistema que erra de −85% a +166% entre dias de captura exibe um agregado
+        de −2% e passaria numa revisão que olhasse só o total.</p>
+        <p class="fraco" style="font-size:.9em;margin-bottom:.8em">O erro também não é aleatório:
+        as duas sessões de <strong>19/09 subcontam</strong>, as oito de <strong>21/09
+        sobrecontam</strong>. É deriva de domínio entre dias — e é ela que a estação
+        <span class="n">8</span> ataca.</p>
+
+        <div style="border-left:4px solid var(--falso);padding:.5em 0 .5em .9em">
+          <b style="font-family:var(--medida);font-size:1.9rem;font-weight:700;color:var(--falso);
+             letter-spacing:-.02em;display:block;line-height:1">NO-GO</b>
+          <span style="font-size:.9em;color:var(--tinta-fraca)">para uma V1. Passa em uma trava
+          das três — e a que ela passa é a que menos protege.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 0 ............................................................... o que falta -->
+  <section class="estacao" data-id="0" data-nome="Produção" data-prova="results/per_image.csv · results/dataset_summary.json · §8 do relatório">
+    <div class="olho">o plano &nbsp;·&nbsp; <span style="color:#008300">medido</span> = saiu deste trabalho &nbsp;·&nbsp; <span style="color:#eda100">proposto</span> = decisão de engenharia &nbsp;·&nbsp; <span style="color:#2a78d6">meta</span> = alvo a bater</div>
+    <h1 style="max-width:none;font-size:clamp(1.3rem,2.4vw,1.95rem);margin-bottom:.5em">De onde estamos até uma V1 em produção</h1>
+
+    <div class="plano">
+      <div class="coluna">
+        <div class="cartao">
+        <h3>1 · Captura</h3>
+        <p><b>~30 sessões</b> — cada uma é uma passada do robô numa fileira, num horário.
+        <b>10 dias</b> ao longo da safra × <b>3 horários</b> (manhã, meio-dia, fim de tarde),
+        metade em céu limpo e metade nublado. A <b>~120 fotos por sessão</b> dá <b>~3.600 fotos</b>.</p>
+        <p class="nota"><span class="tag med">medido</span> A luz é o fator dominante: o brilho
+        dentro das caixas vai de <b>54 a 166</b> entre sessões e o treino só cobriu até 129. A
+        sessão que o modelo mais erra é a mais clara.</p>
+        <p class="nota"><span class="tag med">medido</span> O desvio do erro <i>dentro</i> de uma
+        sessão é <b>~50%</b>. Para medir o erro de uma condição a <b>±5%</b> preciso de
+        <b>~100 fotos</b>; a <b>±3%</b> — que é a trava de viés — preciso de <b>~280</b>. Daí o
+        piso de 120 por sessão e ≥3 sessões por condição.</p>
+        <p class="nota"><span class="tag prop">proposto</span> <b>RGB-D ou estéreo de baseline
+        fixa.</b> Não é luxo: metade do erro hoje é detectar fruta de fundo e de chão. Um corte por
+        profundidade define o plano de contagem por <b>geometria</b> em vez de julgamento do
+        anotador, e elimina a classe inteira.</p>
+        <p class="nota"><span class="tag prop">proposto</span> Registrar por foto: hora, exposição,
+        fileira, lado, altura da câmera, clima. Sem isso não dá para estratificar o erro depois.</p>
+        </div>
+        <div class="cartao">
+        <h3>2 · Anotação</h3>
+        <p><b>~1.200 fotos anotadas</b> das 3.600, estratificadas — mais peso nas condições
+        extremas de luz e nos cachos densos. A ~40 frutas por foto, dá <b>~48 mil instâncias</b>,
+        quase o dobro das 28 mil de hoje.</p>
+        <p class="nota"><span class="tag prop">proposto</span> <b>Pré-anotação com o modelo atual +
+        correção humana.</b> Do zero custa ~30 min por foto; corrigindo cai para 8–10 min. 1.200
+        fotos ≈ <b>200 h</b>, ou 2 anotadores em 3 semanas — contra 600 h do zero.</p>
+        </div>
+      </div>
+
+      <div class="coluna">
+        <div class="cartao">
+        <h3>3 · Split</h3>
+        <p><b>Agrupado por FILEIRA</b> — não por foto, e nem por sessão. Frente e trás da mesma
+        fileira são a mesma planta com luz diferente: têm de ficar do mesmo lado do split.</p>
+        <table class="mini">
+          <tbody>
+            <tr><td>treino</td><td class="medida">~60%</td><td>as fileiras restantes</td></tr>
+            <tr><td>validação</td><td class="medida">~20%</td><td><b>≥3 sessões</b> inteiras</td></tr>
+            <tr><td>teste</td><td class="medida">~20%</td><td><b>dias inteiros</b> nunca vistos</td></tr>
+          </tbody>
+        </table>
+        <p class="nota"><span class="tag med">medido</span> Validar em <b>uma</b> sessão só custou
+        <b>doze pontos de MAE</b>: 0,38 maçã de diferença elegeu o braço errado. Por isso ≥3.</p>
+        <p class="nota"><span class="tag med">medido</span> Split aleatório infla o AP50 de
+        <b>0,55 para 0,81</b>. O teste tem de ser <b>dia inteiro retido</b>, senão o número não vale.</p>
+        <p class="nota"><span class="tag prop">proposto</span> Guardar um <b>canário rotulado por
+        estufa</b>: 50 fotos fixas, re-medidas a cada release.</p>
+        </div>
+        <div class="cartao">
+        <h3>4 · Treino</h3>
+        <table class="mini">
+          <tbody>
+            <tr><td>modelo</td><td><b>YOLO26s @ 1280</b></td></tr>
+            <tr><td>épocas</td><td class="medida">~150</td></tr>
+            <tr><td>paciência</td><td class="medida">30</td></tr>
+            <tr><td>batch</td><td>o que couber (3 em 6 GB)</td></tr>
+            <tr><td>sementes</td><td class="medida">3</td></tr>
+          </tbody>
+        </table>
+        <p class="nota"><span class="tag med">medido</span> O joelho da capacidade está em
+        <b>~10 M parâmetros</b> com 450 imagens — 21,8 M piora. Com 4× mais dado o joelho anda:
+        <b>re-medir antes de subir</b>, não assumir.</p>
+        <p class="nota"><span class="tag med">medido</span> <b>Parar pelo mAP é armadilha.</b> O mAP
+        de validação ficou parado (0,4478 → 0,4480) enquanto a MAE de teste caía <b>22,8%</b>. A
+        paciência tem de olhar a <b>MAE de contagem</b>, não o mAP.</p>
+        <p class="nota"><span class="tag med">medido</span> <b>Augmentação por regra, não por
+        chute:</b> medir o V dentro das caixas por condição e ajustar até
+        <code>V_treino × (1+g) ≥ V_max</code>. Aqui deu <code>hsv_v = 0,75</code> e comprou
+        <b>−16,2% de MAE</b>.</p>
+        <p class="nota"><span class="tag prop">proposto</span> <b>n = 3 sementes por condição.</b>
+        Hoje é n = 1, e duas conclusões deste relatório mudaram ao repetir a medição.</p>
+        </div>
+      </div>
+
+      <div class="coluna">
+        <div class="cartao">
+        <h3>5 · Deployment</h3>
+        <p class="nota"><span class="tag prop">proposto</span> <b>Export</b> PyTorch → ONNX →
+        TensorRT <b>construído no próprio Jetson</b> (a engine é específica de hardware e versão).
+        FP16 primeiro; INT8 só com calibração amostrada da estufa alvo. Medir latência do
+        <b>lote de tiles</b>, não por tile.</p>
+        <p class="nota"><span class="tag prop">proposto</span> <b>Recalibrar o limiar por estufa.</b>
+        O ponto de operação não é universal — luz e variedade deslocam a distribuição de scores.
+        Uma passada com o canário resolve.</p>
+        </div>
+        <div class="cartao portao">
+        <h3>Critério de saída</h3>
+        <table class="mini" style="width:100%">
+          <thead><tr><th>métrica</th><th>hoje</th><th>meta</th></tr></thead>
+          <tbody>
+            <tr><td>erro por fileira</td><td class="medida">54,3%</td>
+                <td class="medida" style="color:#2a78d6">≤ 10%</td></tr>
+            <tr><td>|viés|</td><td class="medida" style="color:#008300">2,0%</td>
+                <td class="medida" style="color:#2a78d6">≤ 3%</td></tr>
+            <tr class="destaque"><td>pior condição</td><td class="medida">166%</td>
+                <td class="medida" style="color:#2a78d6">≤ 15%</td></tr>
+            <tr><td>recall no ponto</td><td class="medida">0,64</td>
+                <td class="medida" style="color:#2a78d6">≥ 0,80</td></tr>
+            <tr><td>latência Jetson</td><td class="medida">—</td>
+                <td class="medida" style="color:#2a78d6">&lt; 100 ms</td></tr>
+          </tbody>
+        </table>
+        <p class="nota"><span class="tag meta">meta</span> A <b>fileira</b> é a unidade que o cliente
+        compra; o <b>viés</b> entra porque erro com sinal acumula fileira afora enquanto ruído se
+        cancela; o <b>recall</b> entra para garantir que uma MAE baixa não seja FP cancelando FN.
+        A <b>pior condição</b> é a trava que hoje reprova.</p>
+        <p class="nota"><span class="tag meta">meta</span> São <b>alvos, não previsões</b>. O que
+        sustenta serem atingíveis é que <b>as duas piores condições têm causa identificada</b>: a de
+        −85% é falta de cobertura de luz, a de +166% é escopo de anotação. As duas são endereçadas
+        pelos passos 1 e 2 — <b>não por um modelo maior</b>.</p>
+        </div>
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- D ..................................................................... o demo -->
+  <section class="estacao" data-id="D" data-nome="Demo" data-prova="src/inference/engine.py · results/operating_point.json">
+    <div class="olho">ao vivo · o pipeline de verdade, importado do repositório</div>
+    <h1 style="max-width:none;font-size:clamp(1.6rem,3vw,2.5rem);margin-bottom:.45em">Sua imagem, os <em>quatro braços</em></h1>
+
+    <div class="barra">
+      <label>Pesos
+        <select id="modelo">
+          <option value="yolo26s_imgsz1280_200ep_aug">YOLO26s @1280 + aug · o melhor</option>
+          <option value="yolo26n_imgsz640_120ep">YOLO26n @640 · o baseline</option>
+        </select>
+      </label>
+      <button class="botao" id="aquecer" type="button">Aquecer o modelo</button>
+      <span class="fraco" style="font-size:.8em">ou use um exemplo:</span>
+      <button class="botao" data-exemplo="facil" type="button">sessão fácil (21/09)</button>
+      <button class="botao" data-exemplo="dificil" type="button">sessão difícil (19/09)</button>
+      <span class="rodando" id="estado"></span>
+    </div>
+
+    <div class="solta" id="solta" tabindex="0" role="button"
+         aria-label="Solte uma imagem, cole com Ctrl+V, ou clique para escolher">
+      <p><strong>Solte uma imagem aqui</strong>, cole com <span class="n">Ctrl+V</span>, ou clique
+      para escolher.</p>
+      <p class="fraco some" style="margin-top:.4em">Cada braço roda no ponto de operação que a
+      validação congelou. A coluna que importa é <strong>duplicatas removidas</strong>.</p>
+    </div>
+    <input type="file" id="arquivo" accept="image/*" class="escondido">
+
+    <div id="resultado" class="escondido">
+      <div id="verdade" class="verdade escondido"></div>
+      <div id="pesos-usados" class="pesos escondido"></div>
+      <div id="legenda" class="legenda escondido"></div>
+      <div class="grade" id="grade"></div>
+    </div>
+    <p id="erro" class="aviso escondido"></p>
+  </section>
+
+  <!-- S ................................................................... backup -->
+  <section class="estacao" data-id="S" data-nome="Siglas" data-prova="report/relatorio.md · Siglas">
+    <div class="olho">consulta rápida &nbsp;·&nbsp; a tecla <b>S</b> chega aqui de qualquer estação</div>
+    <h1 style="max-width:none;font-size:clamp(1.25rem,2.2vw,1.8rem);margin-bottom:.55em">Siglas, vocabulário e números de reserva</h1>
+    <h3 style="margin:0 0 .5em;font-family:var(--medida);font-size:.72em;font-weight:600;color:var(--tinta-fraca);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--linha);padding-bottom:.28em">Números de reserva</h3>
+    <div class="placar" style="--tam:clamp(1rem,1.7vw,1.35rem);gap:.75rem 1.7rem;margin:0 0 1.2em">
+      <div class="metrica"><b>670</b><span>imagens rotuladas</span></div>
+      <div class="metrica"><b>28.182</b><span>instâncias anotadas</span></div>
+      <div class="metrica"><b>42</b><span>maçãs por imagem (média)</span></div>
+      <div class="metrica"><b>10</b><span>sessões de captura</span></div>
+      <div class="metrica"><b>27 px</b><span>lado mediano da caixa</span></div>
+      <div class="metrica"><b>69,5%</b><span>são COCO-small</span></div>
+      <div class="metrica"><b>364/81/225</b><span>treino / val / teste (fold 0)</span></div>
+      <div class="metrica"><b>90</b><span>limiares varridos</span></div>
+      <div class="metrica"><b>3.240</b><span>configurações pareadas IoS×IoU</span></div>
+      <div class="metrica"><b>33,2 → 12,6</b><span>MAE: baseline → melhor</span></div>
+      <div class="metrica"><b>0,319 → 0,683</b><span>recall: baseline → melhor</span></div>
+      <div class="metrica"><b>199.212</b><span>pares entre sessões varridos</span></div>
+      <div class="metrica"><b>119</b><span>testes automatizados</span></div>
+    </div>
+    <div class="glossario">
+      <div>
+        <h3>Contagem — o que o cliente compra</h3>
+        <table class="verbete"><tbody>
+          <tr><td>MAE</td><td>erro absoluto médio de contagem, em maçãs por imagem</td></tr>
+          <tr><td>MAPE</td><td>o mesmo, em % da contagem real — <b>é o critério de aceitação</b></td></tr>
+          <tr><td>viés</td><td>erro médio <b>com sinal</b>. Acumula fileira afora; ruído se cancela, viés não</td></tr>
+          <tr><td>R²</td><td>concordância com a reta <i>y = x</i>; negativo = pior que prever a média</td></tr>
+          <tr><td>r²</td><td>ajuste de uma regressão livre — mais lisonjeiro, e não é o mesmo</td></tr>
+        </tbody></table>
+        <h3 style="margin-top:.9em">Embarcado</h3>
+        <table class="verbete"><tbody>
+          <tr><td>Jetson</td><td>o computador embarcado do robô (NVIDIA) — é onde a latência tem de caber</td></tr>
+          <tr><td>ONNX</td><td>formato intermediário entre o PyTorch e o TensorRT</td></tr>
+          <tr><td>TensorRT</td><td>compilador da NVIDIA que otimiza a rede <b>para aquele chip</b></td></tr>
+          <tr><td>FP16 / INT8</td><td>precisão numérica reduzida: mais rápido, com perda <b>a medir</b></td></tr>
+          <tr><td>RGB-D</td><td>câmera que entrega cor <b>+ profundidade</b>; define o plano de contagem</td></tr>
+          <tr><td>AGPL-3.0</td><td>licença do Ultralytics; produto fechado exige Enterprise ou detector permissivo</td></tr>
+        </tbody></table>
+      </div>
+      <div>
+        <h3>Detecção — diagnóstico, não critério</h3>
+        <table class="verbete"><tbody>
+          <tr><td>mAP</td><td>AP média entre classes; aqui há uma só, então mAP = AP</td></tr>
+          <tr><td>AP / AP50</td><td><i>average precision</i> média em IoU 0,50–0,95 / fixa em 0,50</td></tr>
+          <tr><td>AP-small</td><td>AP restrito a objetos &lt; 32² px — <b>69,5%</b> deste dataset</td></tr>
+          <tr><td>AR@300</td><td><i>average recall</i> com até 300 detecções por imagem</td></tr>
+          <tr><td>precisão</td><td>do que apontei, quanto era fruta de verdade</td></tr>
+          <tr><td>recall</td><td>da fruta que existia, quanto eu achei</td></tr>
+          <tr><td>F1</td><td>média harmônica das duas, no ponto de operação</td></tr>
+          <tr><td>TP/FP/FN</td><td>acerto / detecção sem anotação / anotação perdida</td></tr>
+          <tr><td>a identidade</td><td><b>predito − real = FP − FN</b>. É por isso que MAE baixa pode ser erro se cancelando</td></tr>
+        </tbody></table>
+      </div>
+      <div>
+        <h3>Pipeline — as escolhas da Tarefa 2</h3>
+        <table class="verbete"><tbody>
+          <tr><td>tile</td><td>recorte da foto processado como se fosse uma imagem inteira</td></tr>
+          <tr><td>passe</td><td>uma execução do detector. O braço D faz <b>15</b> por foto</td></tr>
+          <tr><td>braço</td><td>uma estratégia de inferência (A, B, C, D). O <b>peso é o mesmo</b> nos quatro</td></tr>
+          <tr><td>IoU</td><td>interseção ÷ <b>união</b> das duas caixas</td></tr>
+          <tr><td>IoS</td><td>interseção ÷ área da <b>menor</b> — é o que mata a duplicata de borda</td></tr>
+          <tr><td>NMS / NMM</td><td>descarta a de menor score / <b>funde</b> as duas na união</td></tr>
+          <tr><td>descartar<br>truncadas</td><td>jogar fora a caixa encostada numa borda <b>interna</b> do tile</td></tr>
+          <tr><td>ponto de<br>operação</td><td>o par (limiar de <code>conf</code>, política de fusão) que foi <b>congelado</b></td></tr>
+          <tr><td>conf</td><td>score mínimo para uma detecção entrar na contagem</td></tr>
+        </tbody></table>
+      </div>
+      <div>
+        <h3>Dado e modelo</h3>
+        <table class="verbete"><tbody>
+          <tr><td>sessão</td><td>uma passada de captura; o nome do arquivo dá data e hora</td></tr>
+          <tr><td>fold</td><td>uma das 3 divisões; a <b>sessão inteira</b> fica de um lado só (GroupKFold)</td></tr>
+          <tr><td>COCO</td><td>benchmark cujos cortes de área (<i>small/medium/large</i>) são usados</td></tr>
+          <tr><td>solidez</td><td>área da máscara ÷ área da caixa — proxy de oclusão</td></tr>
+          <tr><td>STAL</td><td>atribuição de rótulo do YOLO26, ciente de alvo pequeno</td></tr>
+          <tr><td>DFL</td><td><i>distribution focal loss</i>; ausente no YOLO26, o que limpa o export</td></tr>
+          <tr><td>hsv_v</td><td>ganho de brilho na augmentação: V é multiplicado em [1−g, 1+g]</td></tr>
+          <tr><td>ORB /<br>RANSAC</td><td>detector de pontos e ajuste robusto — acham a mesma cena entre duas fotos</td></tr>
+          <tr><td>canário</td><td>conjunto fixo rotulado, re-medido a cada release</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    <p class="fraco" style="font-size:.8em">Licença do MinneApple: <strong>CC BY-NC-SA 3.0 US</strong>, não comercial — serve para o assessment, não serviria para treinar produto. O Ultralytics é AGPL-3.0.</p>
+  </section>
+
+</div>
+
+<footer class="prova"><b id="prova-rot">EVIDÊNCIA</b><span id="prova"></span>
+  <span style="margin-left:auto" class="fraco">← → navega · dígito pula · D demo · S siglas</span>
+</footer>
+
+  <div id="lupa" class="lupa escondido" role="dialog" aria-label="imagem ampliada"><img id="lupaImg" alt=""></div>
+
+<script>
+const estacoes = [...document.querySelectorAll('.estacao')];
+const trilho = document.getElementById('trilho');
+const prova = document.getElementById('prova');
+let atual = 0;
+
+estacoes.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'chip';
+  b.type = 'button';
+  b.innerHTML = `<span class="tecla">${s.dataset.id}</span>${s.dataset.nome}`;
+  b.addEventListener('click', () => ir(i));
+  trilho.appendChild(b);
+});
+const chips = [...trilho.children];
+
+function ir(i){
+  atual = Math.max(0, Math.min(estacoes.length - 1, i));
+  estacoes.forEach((s, k) => k === atual ? s.setAttribute('data-ativa','') : s.removeAttribute('data-ativa'));
+  chips.forEach((c, k) => c.setAttribute('aria-current', k === atual ? 'true' : 'false'));
+  prova.textContent = estacoes[atual].dataset.prova;
+  chips[atual].scrollIntoView({block:'nearest', inline:'center', behavior:'smooth'});
+  history.replaceState(null, '', '#' + estacoes[atual].dataset.id);
+}
+
+const lupa = document.getElementById('lupa');
+const lupaImg = document.getElementById('lupaImg');
+function abrirLupa(src){ lupaImg.src = src; lupa.classList.remove('escondido'); }
+function fecharLupa(){ lupa.classList.add('escondido'); lupaImg.removeAttribute('src'); }
+lupa.addEventListener('click', fecharLupa);
+
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input,select,textarea')) return;
+  // Com a lupa aberta ela consome o teclado: senao um digito trocaria de estacao por baixo
+  // da imagem ampliada, e a tela mudaria sem o apresentador entender por que.
+  if (!lupa.classList.contains('escondido')) {
+    if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); fecharLupa(); }
+    return;
+  }
+  const k = e.key;
+  if (k === 'ArrowRight' || k === 'PageDown' || k === ' ') { e.preventDefault(); ir(atual + 1); }
+  else if (k === 'ArrowLeft' || k === 'PageUp') { e.preventDefault(); ir(atual - 1); }
+  else if (k === 'Home') ir(0);
+  else if (k === 'End') ir(estacoes.length - 1);
+  else {
+    const alvo = estacoes.findIndex(s => s.dataset.id.toLowerCase() === k.toLowerCase());
+    if (alvo >= 0) ir(alvo);
+  }
+});
+
+const inicial = estacoes.findIndex(s => s.dataset.id === location.hash.slice(1));
+ir(inicial >= 0 ? inicial : 0);
+
+// Trocar o #hash com a pagina ja aberta e navegacao no MESMO documento: nao recarrega, e sem
+// este ouvinte a estacao ficava parada enquanto a barra de enderecos dizia outra coisa.
+addEventListener('hashchange', () => {
+  const alvo = estacoes.findIndex(s => s.dataset.id === location.hash.slice(1));
+  if (alvo >= 0 && alvo !== atual) ir(alvo);
+});
+
+/* ------------------------------------------------------------------ demo ao vivo */
+const solta = document.getElementById('solta');
+const arquivo = document.getElementById('arquivo');
+const grade = document.getElementById('grade');
+const resultado = document.getElementById('resultado');
+const estado = document.getElementById('estado');
+const erroEl = document.getElementById('erro');
+const modelo = document.getElementById('modelo');
+
+solta.addEventListener('click', () => arquivo.click());
+solta.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); arquivo.click(); }});
+arquivo.addEventListener('change', () => arquivo.files[0] && enviar(arquivo.files[0]));
+['dragenter','dragover'].forEach(t => solta.addEventListener(t, e => { e.preventDefault(); solta.classList.add('sobre'); }));
+['dragleave','drop'].forEach(t => solta.addEventListener(t, e => { e.preventDefault(); solta.classList.remove('sobre'); }));
+solta.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) enviar(f); });
+document.addEventListener('paste', e => {
+  const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith('image/'));
+  if (item) { ir(estacoes.findIndex(s => s.dataset.id === 'D')); enviar(item.getAsFile()); }
+});
+
+document.getElementById('aquecer').addEventListener('click', async () => {
+  estado.textContent = 'carregando os pesos…';
+  try {
+    const r = await fetch('/api/aquecer', {method:'POST', headers:{'Content-Type':'application/json'},
+                                           body: JSON.stringify({modelo: modelo.value})});
+    const d = await r.json();
+    estado.textContent = `pronto — ${d.modelo} em ${d.ms} ms`;
+  } catch { estado.textContent = 'não consegui carregar os pesos'; }
+});
+
+document.querySelectorAll('[data-exemplo]').forEach(b => b.addEventListener('click', async () => {
+  estado.textContent = 'buscando o exemplo…';
+  try {
+    const r = await fetch('/exemplo/' + b.dataset.exemplo);
+    const blob = await r.blob();
+    await enviar(new File([blob], b.dataset.exemplo + '.png', {type:'image/png'}));
+  } catch { estado.textContent = 'não achei o exemplo'; }
+}));
+
+async function enviar(f){
+  erroEl.classList.add('escondido');
+  estado.textContent = 'rodando os quatro braços…';
+  const fd = new FormData();
+  fd.append('imagem', f);
+  fd.append('modelo', modelo.value);
+  const t0 = performance.now();
+  try {
+    const r = await fetch('/api/inferir', {method:'POST', body: fd});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.erro || 'falhou');
+    desenhar(d);
+    estado.textContent = `${d.largura}×${d.altura} px · ${Math.round(performance.now()-t0)} ms no total`;
+  } catch (exc) {
+    erroEl.textContent = 'Não deu: ' + exc.message;
+    erroEl.classList.remove('escondido');
+    estado.textContent = '';
+  }
+}
+
+// Sobrecontagem e subcontagem sao erros de causa oposta, entao o SINAL fica visivel e as
+// cores seguem as do resto do console: vermelho = detectei o que nao havia, ambar = perdi.
+function linhaErro(a, gt){
+  if (a.erro === null || a.erro === undefined) return '';
+  const rel = gt ? Math.abs(a.erro) / gt * 100 : 0;
+  const cor = a.erro === 0 ? 'var(--acerto)' : a.erro > 0 ? 'var(--falso)' : 'var(--perdida)';
+  const sinal = a.erro > 0 ? '+' : '';
+  return `<div class="erro"><span>erro vs. verdade</span>
+    <span class="v" style="color:${cor}">${sinal}${a.erro} &nbsp;<span
+      style="font-weight:500;font-size:.9em">(${rel.toFixed(0)}%)</span></span></div>`;
+}
+
+// TP + FP = o que o modelo apontou; TP + FN = o que estava anotado. As duas somas fecham, e
+// e por isso que `contagem - verdade` tem de dar `FP - FN` — a tela deixa a conta a vista.
+function linhasEstado(a){
+  if (a.tp === undefined) return '';
+  const l = (rot, v, cor) => `<div class="est"><span>${rot}</span>
+    <span class="v" style="color:${cor}">${v}</span></div>`;
+  return l('acertos (TP)', a.tp, 'var(--acerto)')
+       + l('falsos positivos', a.fp, 'var(--falso)')
+       + l('falsos negativos', a.fn, 'var(--perdida)');
+}
+
+const LEGENDA = [
+  ['var(--acerto)', 'acerto — o modelo achou a maçã anotada'],
+  ['var(--falso)',  'falso positivo — apontou onde não há anotação'],
+  ['var(--perdida)','falso negativo — a anotação que ele perdeu'],
+  ['var(--serie)',  'a anotação — traço fino por dentro, em TODAS as maçãs anotadas'],
+];
+
+// O codigo do braco (A_full640) e o rotulo da §4 e fica, mas como ETIQUETA: sozinho no titulo
+// ele foi lido como nome do modelo. O titulo passa a dizer o que o braco faz.
+const TITULO = {
+  'A_full640':  'Imagem inteira @640',
+  'B_full1280': 'Imagem inteira @1280',
+  'C_tile640':  'Tiles de 640',
+  'D_tile320':  'Tiles de 320',
+};
+
+function desenhar(d){
+  const pesos = document.getElementById('pesos-usados');
+  pesos.innerHTML = `pesos: <b>${d.modelo}</b> &nbsp;·&nbsp; os quatro cartões abaixo rodam
+    <b>os mesmos pesos</b>; o que muda entre eles é a estratégia de inferência`;
+  pesos.classList.remove('escondido');
+  const leg = document.getElementById('legenda');
+  leg.innerHTML = LEGENDA.map(([c, t]) =>
+    `<span><i style="border-color:${c}"></i>${t}</span>`).join('');
+  leg.classList.toggle('escondido', d.gt === null || d.gt === undefined);
+  const v = document.getElementById('verdade');
+  if (d.gt === null || d.gt === undefined) {
+    v.className = 'verdade sem';
+    v.innerHTML = `<b>Sem anotação para esta imagem.</b> As contagens abaixo não têm com o que
+      ser comparadas — anotação só existe para as 670 do MinneApple. Use os exemplos embutidos
+      para ver o erro medido.`;
+  } else {
+    v.className = 'verdade';
+    v.innerHTML = `Verdade anotada: <b>${d.gt}</b> maçãs &nbsp;·&nbsp;
+      <span class="fraco">${d.gt_origem} &nbsp;·&nbsp; o MinneApple anota <b>só a fruta da
+      árvore em primeiro plano</b>, então fruta de fundo e de chão detectada conta como erro
+      aqui &nbsp;·&nbsp; o critério de aceitação é por <b>fileira</b>, não por foto</span>`;
+  }
+  v.classList.remove('escondido');
+  grade.innerHTML = '';
+  for (const a of d.arms) {
+    const el = document.createElement('div');
+    el.className = 'painel';
+    el.innerHTML = `
+      <h3><span class="cod">${a.braco}</span>${TITULO[a.braco] || a.braco}</h3>
+      <div class="estrategia">${a.estrategia}<br>${a.escala}</div>
+      <img src="${a.imagem}" alt="Detecções de ${TITULO[a.braco] || a.braco} (${a.braco})">
+      <div class="dados">
+        <div><span>contagem</span><span class="v">${a.contagem}</span></div>
+        ${linhaErro(a, d.gt)}
+        ${linhasEstado(a)}
+        <div><span>caixas brutas</span><span class="v">${a.brutas}</span></div>
+        <div class="dup"><span>duplicatas removidas</span><span class="v">−${a.duplicatas}</span></div>
+        <div><span>descartadas na borda</span><span class="v">−${a.borda}</span></div>
+        <div><span>tiles · limiar</span><span class="v">${a.tiles} · ${a.conf.toFixed(2)}</span></div>
+        <div><span>latência</span><span class="v">${a.ms} ms</span></div>
+        <div class="fraco" style="font-size:.9em;padding-top:.2em">limiar: ${a.conf_origem}</div>
+      </div>`;
+    el.querySelector('img').addEventListener('click', ev => abrirLupa(ev.target.src));
+    grade.appendChild(el);
+  }
+  resultado.classList.remove('escondido');
+  solta.classList.add('compacta');   // ja cumpriu o papel; a tela agora e dos resultados
+}
+</script>
+</body>
+</html>

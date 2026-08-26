@@ -1,0 +1,31 @@
+# A imagem só precisa do código, dos checkpoints de models/ e dos CSVs de results/.
+.git/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Checkpoints PRÉ-TREINADOS que o Ultralytics baixa no diretório de trabalho (~44 MB).
+# A imagem não treina, então não servem para nada dentro dela. Os pesos que ela USA são os
+# de models/, que ficam de fora desta regra de propósito.
+/yolo*.pt
+
+# O console de apresentação não roda na imagem: ela não instala Flask, de propósito.
+# Três exceções: `tests/test_demo_gt.py` confere que a verdade anotada que o console mostra é
+# a da imagem certa, e para isso lê o `app.py` como TEXTO (não importa Flask), o índice e os
+# dois exemplos. São ~3,8 MB, e sem eles esses 7 testes pulariam dentro do contêiner.
+demo/*
+!demo/app.py
+!demo/gt_index.csv
+!demo/exemplos
+GUIA-DE-DEFESA.md
+
+# 7,5 GB de dataset e saídas de treino. Fora do contexto de build, senão o `docker
+# build` empurraria tudo isso para o daemon a cada execução.
+ml/
+
+# Saídas grandes e regeneráveis
+results/raw_detections/
+results/audit*/
+results/galeria*/
+results/inference/
+report/relatorio.html

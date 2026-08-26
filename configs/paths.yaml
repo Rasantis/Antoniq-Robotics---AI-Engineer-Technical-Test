@@ -1,0 +1,22 @@
+# Caminhos locais. Relativos são resolvidos contra a raiz do repositório, então funcionam de
+# qualquer diretório de trabalho. Ajuste apenas este arquivo ao reproduzir em outra máquina.
+
+dataset_root: "ml/minneapple"           # contém detection/train/{images,masks} e detection/test/images
+runs_root:    "ml/runs"                 # saídas de treino do Ultralytics
+
+# ATENÇÃO ao mudar estes caminhos: `01_prepare_data.py` grava os `data.yaml` e os `.txt` de
+# split dos folds com caminho ABSOLUTO (é o que o Ultralytics consome). Mover o dataset sem
+# re-rodar a Etapa 1 deixa esses arquivos apontando para o lugar antigo, e o treino falha com
+# "images not found". Depois de mexer aqui: `python scripts/01_prepare_data.py`.
+
+# `ml/` são 7,5 GB e está no .gitignore — fica dentro da pasta do projeto para tudo viver num
+# lugar só, mas nunca entra no repositório. Noutra máquina, ou aponte para onde você extraiu o
+# dataset (`D:/algum/caminho/minneapple`), ou recrie `ml/minneapple` seguindo scripts/00_download.md.
+
+# Os checkpoints PRÉ-TREINADOS (yolo26n.pt e afins) são baixados pelo Ultralytics no
+# diretório de trabalho, não aqui — o `*.pt` do .gitignore impede que entrem no repositório.
+# Os pesos TREINADOS ficam em runs_root; os oito da §6 estão versionados em models/.
+
+# Dentro do repositório (versionados)
+results_root: "results"
+figures_root: "results/figures"

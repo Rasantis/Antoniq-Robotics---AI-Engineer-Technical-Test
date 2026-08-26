@@ -1,0 +1,12 @@
+{
+  "arm": "A_full640",
+  "conf": 0.13,
+  "policy": "ios-nmm@0.5-drop",
+  "total_gt": 28182,
+  "false_negatives": 10229,
+  "false_positives": 10769,
+  "net_count_error": 540,
+  "gross_error": 20998,
+  "recall": 0.6370378255624157,
+  "fp_per_image": 16.073134328358208
+}

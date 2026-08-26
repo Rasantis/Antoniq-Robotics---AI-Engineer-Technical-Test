@@ -1,0 +1,62 @@
+{
+  "arm": "A_full640",
+  "conf": 0.13,
+  "metric": "ios",
+  "merge_policy": "nmm",
+  "threshold": 0.5,
+  "drop_truncated": true,
+  "policy_label": "ios-nmm@0.5-drop",
+  "criterion": "menor MAE na VALIDACAO entre as combinacoes com |bias_rel| <= 3%",
+  "bias_constraint_satisfied": true,
+  "selected_on": "validation",
+  "per_arm": {
+    "A_full640": {
+      "conf": 0.13,
+      "policy_label": "ios-nmm@0.5-drop",
+      "metric": "ios",
+      "merge_policy": "nmm",
+      "threshold": 0.5,
+      "drop_truncated": true,
+      "val_MAE": 8.990291262135923,
+      "val_f1": 0.7336651258080457,
+      "val_bias_rel": 0.008093822266270234,
+      "bias_ok": true
+    },
+    "B_full1280": {
+      "conf": 0.3,
+      "policy_label": "ios-nmm@0.5-drop",
+      "metric": "ios",
+      "merge_policy": "nmm",
+      "threshold": 0.5,
+      "drop_truncated": true,
+      "val_MAE": 17.844660194174757,
+      "val_f1": 0.6541416106852561,
+      "val_bias_rel": -0.019821605550049554,
+      "bias_ok": true
+    },
+    "C_tile640": {
+      "conf": 0.31,
+      "policy_label": "ios-nmm@0.3-drop",
+      "metric": "ios",
+      "merge_policy": "nmm",
+      "threshold": 0.3,
+      "drop_truncated": true,
+      "val_MAE": 18.888349514563107,
+      "val_f1": 0.6475340473900144,
+      "val_bias_rel": 0.010323752890650809,
+      "bias_ok": true
+    },
+    "D_tile320": {
+      "conf": 0.16,
+      "policy_label": "ios-nmm@0.3-drop",
+      "metric": "ios",
+      "merge_policy": "nmm",
+      "threshold": 0.3,
+      "drop_truncated": true,
+      "val_MAE": 40.907766990291265,
+      "val_f1": 0.18658242239509362,
+      "val_bias_rel": -0.025024777006937563,
+      "bias_ok": true
+    }
+  }
+}

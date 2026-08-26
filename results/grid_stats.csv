@@ -1,0 +1,5 @@
+arm,n_tiles,overlap_cfg,overlap_real_x,overlap_real_y,redundancy
+A_full640,1,0.0,0.0,0.0,1.0
+B_full1280,1,0.0,0.0,0.0,1.0
+C_tile640,6,0.2,0.875,0.5,2.6666666666666665
+D_tile320,15,0.2,0.375,0.25,1.6666666666666667

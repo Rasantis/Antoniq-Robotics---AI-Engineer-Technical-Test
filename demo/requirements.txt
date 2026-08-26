@@ -1,0 +1,7 @@
+# Só o console de apresentação. O pipeline em si não depende de Flask — por isso esta lista é
+# separada do requirements.txt da raiz, que é o ambiente que produziu os resultados.
+#
+#   pip install -r requirements.txt          # o pipeline
+#   pip install -r demo/requirements.txt     # + o console
+
+flask==2.3.3

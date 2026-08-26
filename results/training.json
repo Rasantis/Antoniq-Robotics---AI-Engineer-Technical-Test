@@ -1,0 +1,42 @@
+[
+  {
+    "run": "grouped_fold0",
+    "epochs": 80,
+    "epochs_requested": 120,
+    "minutes": 0.4,
+    "val_mAP50_95": 0.41043216239685226,
+    "val_mAP50": 0.8331796471488961,
+    "val_mAP75": 0.35036161406835303,
+    "weights": "D:\\Users\\rafa2\\OneDrive\\Desktop\\robotics\\antoniq-fruit-counting\\ml\\runs\\train\\grouped_fold0\\weights\\best.pt"
+  },
+  {
+    "run": "grouped_fold1",
+    "epochs": 98,
+    "epochs_requested": 120,
+    "minutes": 0.4,
+    "val_mAP50_95": 0.3002850164610471,
+    "val_mAP50": 0.6296414656806931,
+    "val_mAP75": 0.24154088739561236,
+    "weights": "D:\\Users\\rafa2\\OneDrive\\Desktop\\robotics\\antoniq-fruit-counting\\ml\\runs\\train\\grouped_fold1\\weights\\best.pt"
+  },
+  {
+    "run": "grouped_fold2",
+    "epochs": 120,
+    "epochs_requested": 120,
+    "minutes": 0.4,
+    "val_mAP50_95": 0.37701532349939526,
+    "val_mAP50": 0.7919323715085677,
+    "val_mAP75": 0.3090268427366114,
+    "weights": "D:\\Users\\rafa2\\OneDrive\\Desktop\\robotics\\antoniq-fruit-counting\\ml\\runs\\train\\grouped_fold2\\weights\\best.pt"
+  },
+  {
+    "run": "random_fold0",
+    "epochs": 120,
+    "epochs_requested": 120,
+    "minutes": 0.4,
+    "val_mAP50_95": 0.4161012061072487,
+    "val_mAP50": 0.8396994428982756,
+    "val_mAP75": 0.3650207583283779,
+    "weights": "D:\\Users\\rafa2\\OneDrive\\Desktop\\robotics\\antoniq-fruit-counting\\ml\\runs\\train\\random_fold0\\weights\\best.pt"
+  }
+]

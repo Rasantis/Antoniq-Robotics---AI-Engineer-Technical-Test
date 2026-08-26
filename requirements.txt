@@ -1,0 +1,34 @@
+# Versoes exatas do ambiente que produziu os resultados (ver environment.md).
+#
+# ATENCAO: estas versoes foram lidas de `module.__version__` em tempo de execucao, NAO de
+# `pip freeze`. Na maquina de desenvolvimento havia diretorios .dist-info obsoletos que faziam
+# o pip reportar numpy 2.2.6 e opencv-python 4.11.0.86, enquanto o que rodava era numpy 2.3.5 e
+# OpenCV 4.10.0.84 do pacote opencv-contrib-python. `scripts/check_environment.py` detecta esse
+# tipo de divergencia.
+#
+# PyTorch com CUDA 12.6 precisa vir do indice oficial, antes deste arquivo:
+#   pip install torch==2.9.1 torchvision==0.24.1 --index-url https://download.pytorch.org/whl/cu126
+#
+# NOTA sobre OpenCV: o ultralytics declara `opencv-python` como dependencia, entao uma
+# instalacao limpa acaba com os DOIS pacotes (ele e o opencv-contrib-python pinado abaixo).
+# Nao e conflito: os dois fornecem o mesmo modulo `cv2` e, medido no container limpo, o que
+# responde em runtime e o 4.10.0.84 do contrib — que e o que produziu os resultados.
+# `scripts/check_environment.py` le a versao de runtime justamente para provar isso.
+
+ultralytics==8.4.72
+numpy==2.3.5
+opencv-contrib-python==4.10.0.84
+pillow==12.2.0
+pandas==2.3.3
+scikit-learn==1.9.0
+scipy==1.17.1
+pyyaml==6.0.2
+matplotlib==3.10.9
+tqdm==4.66.4
+pycocotools==2.0.8
+
+# relatorio: markdown -> HTML, e contagem de paginas do PDF gerado (scripts/08_report.py)
+markdown==3.6
+pypdf==6.11.0
+
+pytest==8.2.2
