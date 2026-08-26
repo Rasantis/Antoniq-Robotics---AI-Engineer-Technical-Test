@@ -103,10 +103,23 @@ duas plataformas — Windows com RTX 3050 e o container Linux em CPU — no mesm
 Caminhos locais ficam em `configs/paths.yaml`, relativos à raiz — é o único arquivo a ajustar
 noutra máquina. Dataset e saídas de treino ficam em **`ml/`** (7,5 GB), dentro da pasta mas
 **fora do repositório**: `/ml/` está no `.gitignore`, então o clone tem 101 arquivos.
-**Os oito checkpoints da §6 são a exceção e vão versionados** em
-`models/` (126 MB): sem eles, reproduzir a tabela comparativa exigiria baixar 1,9 GB de
-dataset e treinar. `run_inference.py` cai neles automaticamente quando não há peso treinado
-na máquina — ver `models/README.md`.
+**Duas exceções vão versionadas, e as duas existem pela mesma razão: reproduzir sem GPU.**
+
+*Os oito checkpoints da §6* (`models/`, 120 MB) — sem eles, refazer a tabela comparativa
+exigiria baixar 1,9 GB de dataset e treinar. `run_inference.py` cai neles automaticamente
+quando não há peso treinado na máquina; ver `models/README.md`.
+
+*As detecções brutas* (`results/raw_detections/`, 62 MB) — um `.npz` por
+(pesos, braço, fold), gravado antes de qualquer limiar ou fusão. Com elas,
+`03_eval_arms.py --analyze` refaz a ablação inteira de fusão — 3.240 configurações pareadas —
+e `12_compare_models.py` refaz a §6, **sem rodar inferência**. São ~20 h de GPU em 62 MB de
+disco, e é o que separa "acredite nos meus CSVs" de "recalcule você mesmo". No mesmo espírito,
+`results/instances.csv`, `error_gt.csv` e `error_fp.csv` levam a saída por instância das
+Etapas 1 e 4.
+
+O que fica de fora é o que **um comando regenera**: as galerias de auditoria visual
+(`results/audit*/`, `results/galeria*/`) e as saídas de `run_inference.py` são PNG derivado
+desses mesmos artefatos.
 
 ---
 

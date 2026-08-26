@@ -41,12 +41,11 @@ report/*.out
 # ATENCAO: o git NAO aceita comentario no fim de uma linha de padrao. O '#' precisa abrir a
 # linha, senao ele vira parte do padrao e a regra silenciosamente nao casa com nada.
 
-# 30 MB de saida bruta do detector (03_eval_arms.py --infer)
-results/raw_detections/
-# 28k linhas cada, saem de 01_prepare_data.py e 04_error_modes.py
-results/instances.csv
-results/error_gt.csv
-results/error_fp.csv
+# VERSIONADOS de proposito, apesar do tamanho: sao o que permite reavaliar sem GPU.
+# `results/raw_detections/` guarda as deteccoes brutas de cada (modelo, braco, fold); com
+# elas, `03_eval_arms.py --analyze` e `12_compare_models.py` refazem a ablacao inteira e as
+# tabelas do relatorio sem rodar inferencia. Sem elas seriam ~20 h de GPU. Os tres CSVs sao a
+# saida por instancia das Etapas 1 e 4, e a auditoria visual depende de instances.csv.
 # intermediario; o PDF e o entregavel (08_report.py)
 report/relatorio.html
 # Imagens de exemplo do console: sao recortes do MinneApple, que e CC BY-NC-SA. Ficam no
