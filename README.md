@@ -5,6 +5,13 @@ Teste técnico de AI Engineer (Computer Vision). Detecta e **conta** maçãs no
 problema de contagem de framboesa: fruta pequena, agrupada, parcialmente ocluída, e **a mesma
 fruta aparecendo várias vezes** — em tiles sobrepostos e em quadros consecutivos.
 
+![Mesma imagem, mesmo pipeline, dois conjuntos de pesos. À esquerda a anotação humana (74 maçãs). No meio o baseline YOLO26n @640, que conta 34. À direita o modelo final YOLO26s @1280 com a augmentação que a análise de erro encomendou: 74 maçãs, 66 acertos. É uma sessão de 19/09, a de luz forte que o treino não cobria — exatamente o modo de erro que o diagnóstico apontou.](results/figures/12_antes_depois.jpg)
+
+*Um caso típico do quartil superior: **um quarto das imagens fica abaixo de 9% de erro**, a
+mediana é 20% e a cauda vai a 166% na pior sessão. A distribuição inteira, e o que a causa,
+estão na §5 e na §7 do relatório — este README não esconde a cauda, mas também não começa por
+ela.*
+
 O trabalho é organizado em torno de uma tese: **em contagem de fruta, o que quebra o produto
 não é o detector, é a duplicata e o viés.** Um falso positivo e um falso negativo na mesma
 imagem se cancelam e o erro de contagem some; uma duplicata não removida em cada tile vira um
